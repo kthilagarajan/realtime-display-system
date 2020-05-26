@@ -4,6 +4,7 @@
   "description": "realtime display system for indian railways",
   "main": "server.js",
   "scripts": {
+    "start": "node index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
