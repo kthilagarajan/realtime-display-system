@@ -1,3 +1,4 @@
+let token, socket;
 $(document).ready(() => {
   let lat, long;
   $(".loader").toggle("show");
@@ -35,7 +36,8 @@ $(document).ready(() => {
       method: "POST",
       headers: {
         'Accept': 'application/json, text/plain, */*',
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        token
       },
       body: JSON.stringify({ lat, long })
     });
@@ -48,25 +50,43 @@ $(document).ready(() => {
       $(".all-station-select").html(rendered)
     }
   }
-  getLocation();
+  
 
+  async function getToken(cbk) {
+    let resposne = await fetch("/token", {
+      method: "POST",
+      headers: {
+        'Accept': 'application/json, text/plain, */*',
+        'Content-Type': 'application/json'
+      }
+    });
+    let result = await resposne.json();
+    token = result.token;
+    cbk();
+  }
 
-
-  socket.on('disconnect', function () {
-
+  getToken(() => {
+    getLocation();
+    socket = io.connect(`${window.location.href}`, {
+      query: {token}
+    });
   });
+
+  // socket.on('disconnect', function () {
+
+  // });
 });
-var socket = io.connect(`${window.location.href}`);
-socket.on('connect', function () {
-  console.log('connect ' + socket.id);
-});
+// socket.on('connect', function () {
+//   console.log('connect ' + socket.id);
+// });
 async function findTrains(selector) {
   let stationCode = $(selector).val();
   let resposne = await fetch(`/trains/${stationCode}`, {
     method: "GET",
     headers: {
       'Accept': 'application/json, text/plain, */*',
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
+      token
     }
   });
   let result = await resposne.json();
@@ -100,7 +120,8 @@ async function getLiveFeeds(stationCode) {
     method: "POST",
     headers: {
       'Accept': 'application/json, text/plain, */*',
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
+      token
     }
   });
   let result = await resposne.json();

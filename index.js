@@ -7,7 +7,10 @@ const path = require('path');
 const _ = require('lodash');
 const moment = require('moment');
 const Geo = require('geo-nearby');
+const jwt = require('jsonwebtoken');
 const port = 2020;
+const SECRET = "$INDIAN_RAILWAYS_2020$";
+const APP_NAME = "RAILWAYS";
 
 const stations = require('./dataset/stations-formatted.json');
 const stationCompactSet = Geo.createCompactSet(stations, { id: ['code'], name: ['name'] });
@@ -24,13 +27,47 @@ app.get('/ping', (req, res) => {
     res.send('** Indian Railways API **')
 });
 
+io.use(function (socket, next) {
+    if (socket.handshake.query && socket.handshake.query.token) {
+        jwt.verify(socket.handshake.query.token, SECRET, function (err, decoded) {
+            if (err) return next(new Error('Authentication error'));
+            if (decoded && decoded.app != APP_NAME) {
+                return next(new Error('Authentication error'));
+            }
+            next();
+        });
+    } else {
+        next(new Error('Authentication error'));
+    }
+})
+
 server.listen(port, () => console.log(`listening on port ${port}!`))
 
 function isVaidUser(req, res, next) {
-    // Authentication
-    // req.headers.auth
+    let isValid = true;
+    if (req.headers.token) {
+        let data = jwt.verify(req.headers.token, SECRET);
+        if (data && data.app != APP_NAME) {
+            isValid = false;
+        }
+    } else {
+        isValid = false;
+    }
+    if (!isValid) {
+        res.status(401).send("Unauthorized");
+        return;
+    }
     next();
 }
+
+app.post('/token', (req, res) => {
+    var token = jwt.sign({ app: 'RAILWAYS' }, SECRET);
+    let response = {
+        status: 200,
+        token
+    };
+    res.send(response)
+})
 
 app.post('/stations', isVaidUser, (req, res) => {
     let [lat, long] = [req.body.lat, req.body.long];
@@ -83,16 +120,16 @@ app.post('/:code/train/status', isVaidUser, (req, res) => {
     let currentTime = moment().utcOffset("+05:30").format("HH:mm:ss")
     // .format("HH:mm:ss")
     for (let type of ["from", "to"]) {
-        let scheduledTrains = trains[type][code]
+        let scheduledTrains = trains[type][code] || [];
         for (let t of scheduledTrains) {
             let message = ``
             for (let s of schedules[t.number]) {
                 let diff = moment.duration(moment(currentTime, "HH:mm:ss").diff(moment(s.departure, "HH:mm:ss")))
                     .asMinutes()
-                message = `At ${s.station_name} [${s.station_code}]` 
+                message = `At ${s.station_name} [${s.station_code}]`
                 let arrivalDiff = moment.duration(moment(currentTime, "HH:mm:ss").diff(moment(s.arrival, "HH:mm:ss")))
                     .asMinutes()
-                if(arrivalDiff < 0 && arrivalDiff + 3 < 0) {
+                if (arrivalDiff < 0 && arrivalDiff + 3 < 0) {
                     message = `Upcoming ${s.station_name} [${s.station_code}]`
                 }
                 if (diff < 0) {
