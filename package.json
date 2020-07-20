@@ -22,7 +22,7 @@
     "express": "^4.17.1",
     "geo-nearby": "github:kthilagarajan/geo-nearby",
     "jsonwebtoken": "^8.5.1",
-    "lodash": "^4.17.15",
+    "lodash": "^4.17.19",
     "moment": "^2.26.0",
     "path": "^0.12.7",
     "socket.io": "^2.3.0"
